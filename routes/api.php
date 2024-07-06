@@ -17,6 +17,12 @@ use App\Http\Controllers\api\PraiseController;
 */
 Route::post('signup', [AuthController::class, 'signUp']);//1
 Route::post('login', [AuthController::class, 'login']);//6
+Route::post('get-Otp', [AuthController::class, 'getOtp']);//2
+Route::post('match-otp', [AuthController::class, 'matchOtp']);
+Route::post('reset-password', [AuthController::class, 'resetPassword']);
+
+// Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+// Route::post('match-otp-forgot', [AuthController::class, 'matchOtpForgot']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
