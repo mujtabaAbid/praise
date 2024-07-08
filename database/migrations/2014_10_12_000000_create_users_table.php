@@ -17,8 +17,8 @@ return new class extends Migration
             $table->string('last_name');
             $table->string('email')->unique();
             $table->string('password');
-            $table->string('country');
-            $table->string('town_city_region');
+            $table->string('google_id')->nullable();
+            $table->string('apple_id')->nullable();
             $table->string('image')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->timestamps();

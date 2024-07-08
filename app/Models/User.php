@@ -48,4 +48,21 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Praise::class);
     }
+    public function Country()
+    {
+        return $this->belongsTo(Country::class,'country_id','id');
+    }
+    public function State()
+    {
+        return $this->belongsTo(State::class,'state_id','id');
+    }
+    public function city()
+    {
+        return $this->belongsTo(City::class,'city_id','id');
+    }
+
+    public function praises()
+    {
+        return $this->hasMany(Praise::class, 'receiver_id', 'id');
+    }
 }

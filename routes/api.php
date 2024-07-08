@@ -15,21 +15,32 @@ use App\Http\Controllers\api\PraiseController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+//auth controller
 Route::post('signup', [AuthController::class, 'signUp']);//1
 Route::post('login', [AuthController::class, 'login']);//6
+Route::post('social-login', [AuthController::class, 'socialLogin']);
+Route::post('reset-password', [AuthController::class, 'resetPassword']);
 Route::post('get-Otp', [AuthController::class, 'getOtp']);//2
 Route::post('match-otp', [AuthController::class, 'matchOtp']);
-Route::post('reset-password', [AuthController::class, 'resetPassword']);
+
+Route::get('countries', [AuthController::class, 'countries']);
+Route::post('state', [AuthController::class, 'state']);
+Route::post('cities', [AuthController::class, 'cities']);
+
 
 // Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
 // Route::post('match-otp-forgot', [AuthController::class, 'matchOtpForgot']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
+
+
     Route::post('/create-praise', [PraiseController::class,'createPraise']);//11
     Route::get('/get-received-praises', [PraiseController::class,'getReceivedPraises']);//8
     Route::get('/get-sent-praises', [PraiseController::class,'getSentPraises']);//7,12
     Route::post('/get-praises-by-id', [PraiseController::class,'getPraiseById']);//10
     Route::post('/update-status', [PraiseController::class,'updateStatus']);//9
-    Route::get('/filters', [PraiseController::class,'filters']);//13
+    Route::post('/filters', [PraiseController::class,'praisesFilter']);//13
+    
 });

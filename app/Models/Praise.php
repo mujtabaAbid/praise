@@ -10,8 +10,6 @@ class Praise extends Model
     use HasFactory;
     protected $guarded = [];
 
-
-
     public function praiseCategory()
     {
         return $this->hasOne(PraiseCategory::class, 'id');
