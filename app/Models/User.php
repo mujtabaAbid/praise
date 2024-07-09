@@ -65,4 +65,13 @@ class User extends Authenticatable
     {
         return $this->hasMany(Praise::class, 'receiver_id', 'id');
     }
+
+    
+    public function getImageAttribute($image){
+        if ($image) {
+            return asset($image);
+        }else{
+            return '';
+        }
+    }
 }
