@@ -25,22 +25,26 @@ class AuthController extends Controller
             'lastname'      => 'required|string|max:255',
             'email'         => 'required|string|email|max:255|unique:users',
             'password'      => 'required|string|min:8|confirmed',
-            'country_id'    => 'required',
+            'country_id'    => 'required|exists:countries,id',
+            'state_id'      => 'exists:countries,id',
+            'city_id'       => 'exists:countries,id',
             'image'         => 'nullable|image|mimes:jpeg,png,webp,jpg,svg|max:2048',
         ]);
+
 
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();
             return response()->json(['success' => false,'message' => $errorMessage]);
-            
         }
+
+    
         // Handle image upload
         if ($request->hasFile('image')) {
             $imageName = time().'.'.$request->image->getClientOriginalExtension();
             $imagePath = $request->image->move(public_path('upload/images'), $imageName);
             $imagePath = 'upload/images/' . $imageName; // Store the relative path
         } else {
-            $imagePath = null;
+            $imagePath = 'upload/images/PIc.png';
         }
 
         $user = User::create([
@@ -49,6 +53,9 @@ class AuthController extends Controller
             'email'         => $request->email,
             'password'      => Hash::make($request->password),
             'country_id'    => $request->country_id,
+            'state_id'      => $request->state_id,
+            'apple_id'      => $request->apple_id,
+            'google_id'     => $request->google_id,
             'state_id'      => $request->state_id,
             'city_id'       => $request->city_id,
             'image'         => $imagePath,
@@ -106,7 +113,7 @@ class AuthController extends Controller
         
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();
-            return response()->json(['success' => false,'message' => $errorMessage],404);
+            return response()->json(['success' => false,'message' => $errorMessage],);
         }
         
         $auth = Auth::attempt(['email' => request('email'), 'password' => request('password')]);
@@ -114,15 +121,15 @@ class AuthController extends Controller
             $user                   = User::where('id', Auth::id())->first();
             $user->load('Country','State','city');
             $userDetails            = $user->toArray();
-            $userDetails['image']   = 'https://praisy.beckapps.co/' . $user->image;
+            $userDetails['image']   = $user->image;
             $token                  = $user->createToken('auth_token');
             $plainTextToken         = $token->plainTextToken;
             $data                   = ['token' => $plainTextToken, 'user' => $userDetails,];
 
-            return response()->json(['success'=>true, 'message'=>'User Logged in successfully', 'data' => $data],200);
+            return response()->json(['success'=>true, 'message'=>'User Logged in successfully', 'data' => $data],);
             
         } else {
-            return response()->json(['success'=>false, 'message'=>'Invalid Credentials'],404);;
+            return response()->json(['success'=>false, 'message'=>'Invalid Credentials'],);;
         }
     }
     
@@ -138,7 +145,7 @@ class AuthController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $validator->errors()->first()
-                ], 422);
+                ],);
             }
             $user = User::where('email', $request->email)->first();
             if ($user) {
@@ -170,16 +177,31 @@ class AuthController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => $validator->errors()->first()
-                    ], 422);
+                    ], );
                 }
                 $google_id      = null;
                 $apple_id       = null;
+
+
 
                 if ($request->account_type == 'google') {
                     $google_id =  $request->social_id;
                 } else {
                     $apple_id =  $request->social_id;
                 }
+
+                if ($request->hasFile('image')) {
+                    $imageName = time().'.'.$request->image->getClientOriginalExtension();
+                    $imagePath = $request->image->move(public_path('upload/images'), $imageName);
+                    $imagePath = 'upload/images/' . $imageName; // Store the relative path
+                } else {
+                    $imagePath = 'upload/images/PIc.png';
+                }
+
+
+
+
+
                 $user = User::create([
                     'first_name'        => $request->first_name,
                     'last_name'         => $request->last_name,
@@ -188,6 +210,7 @@ class AuthController extends Controller
                     // 'account_type'      => $request->account_type,
                     'google_id'         => $google_id,
                     'apple_id'          => $apple_id,
+                    'image'             => $imagePath,
                 ]);
 
                 // $token = $user->createToken('mytoken')->accessToken;
@@ -201,14 +224,14 @@ class AuthController extends Controller
                 ];
                
                 // DB::commit();
-                return response()->json(['success' => true,'message'=>'Login Successfull', "data" => $data],200);
+                return response()->json(['success' => true,'message'=>'Login Successfull', "data" => $data],);
             }
         } catch (\Throwable $th) {
             // DB::rollback();
             return response()->json([
                 'success' => false,
                 'message' => $th->getMessage()
-            ], 400);
+            ], );
         }
     }
 
@@ -263,7 +286,7 @@ class AuthController extends Controller
         
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();
-            return response()->json(['success' => false, 'message' => $errorMessage],404);
+            return response()->json(['success' => false, 'message' => $errorMessage],);
         }
             $otp = rand(1000, 9999);
             
@@ -273,9 +296,8 @@ class AuthController extends Controller
             );
             
             // Send OTP to email
-           $res = Mail::to($request->email)->send(new OtpMail($otp));
-            // dd($res);
-            return response()->json(['success'=>true, 'message' => 'Otp Sent successfully.'], 200);
+            Mail::to($request->email)->send(new OtpMail($otp));
+            return response()->json(['success'=>true, 'message' => 'Otp Sent successfully.'], );
             
     }
     //ok
@@ -287,16 +309,16 @@ class AuthController extends Controller
         ]);
         
         if ($validator->fails()) {
-            return response()->json(['success' => false,'message' => $validator->errors()->first()], 422);
+            return response()->json(['success' => false,'message' => $validator->errors()->first()],);
         }
         
         // Validate OTP
         $otp = Otp::where('email', $request->email)->where('otp', $request->otp)->first();
         if (!$otp) {
-            return response()->json(['success' => false,'message' => 'Invalid OTP.'], 400);
+            return response()->json(['success' => false,'message' => 'Invalid OTP.'],);
         }
         
-        return response()->json(['success' =>true,'message' => 'OTP verified.'], 200);
+        return response()->json(['success' =>true,'message' => 'OTP verified.'],);
     }
     //ok
     public function countries(){
@@ -310,7 +332,7 @@ class AuthController extends Controller
     public function state(Request $request){
         
         $validator = Validator::make($request->all(), 
-        ['country_id'    => 'required',]);
+        ['country_id'    => 'required|exists:countries,id',]);
         
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();
@@ -326,7 +348,7 @@ class AuthController extends Controller
     public function cities(Request $request){
         
         $validator = Validator::make($request->all(),
-        ['state_id' => 'required']);
+        ['state_id' => 'required|exists:states,id'],['state_id' => 'State doesnot exist']);
         
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();
