@@ -19,11 +19,11 @@ class PraiseController extends Controller
     {
         $receiverExists = User::find($request->receiver_id);
         if (!$receiverExists) {
-            return response()->json(['success' => false, 'message' => 'The receiver ID does not exist.'], 422);
+            return response()->json(['success' => false, 'message' => 'The receiver ID does not exist.'],);
         }
         $praiseCategory = PraiseCategory::find($request->category_id);
         if (!$praiseCategory) {
-            return response()->json(['success' => false, 'message' => 'Praise category ID does not exist.'], 422);
+            return response()->json(['success' => false, 'message' => 'Praise category ID does not exist.'],);
         }
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
@@ -37,7 +37,7 @@ class PraiseController extends Controller
             ->first();
 
         if ($existingPraisy) {
-            return response()->json(['success' => false, 'message' => 'You have already sent this praisy type to this user.'], 422);
+            return response()->json(['success' => false, 'message' => 'You have already sent this praisy type to this user.'], );
         }
 
         $praise = Praise::create([
@@ -54,6 +54,11 @@ class PraiseController extends Controller
     //ok
     public function getReceivedPraises(Request $request) //8
     {
+
+        if ($request->receiver_id == Auth::id()) {
+            return response()->json([ 'success'=>false, 'message'=>'You can not sent paraise to yourself']);
+        }else{
+
         $perPage = $request->input('per_page', 10);
 
         // Fetch the paginated praises
@@ -66,9 +71,9 @@ class PraiseController extends Controller
         // Check if no praises found
         if ($praises->isEmpty()) {
             return response()->json([
-                'status' => 'false',
+                'success' => true,
                 'message' => 'No record found',
-            ], 404);
+            ],);
         }
 
         // Calculate total hours for each praise
@@ -94,6 +99,8 @@ class PraiseController extends Controller
         ]);
     }
 
+    }
+
     //ok
     public function getSentPraises(Request $request) // 7, 12
     {
@@ -102,6 +109,8 @@ class PraiseController extends Controller
 
 
         // Fetch the paginated praises
+        // $abc = Praise::all()->count();
+        // dd($abc);
         $praises = Praise::with('praiseCategory', 'Sender', 'Receiver')
             ->where('sender_id', Auth::id())->orderBy('created_at', 'desc')
             // ->where('status', 1)
@@ -110,9 +119,9 @@ class PraiseController extends Controller
         // Check if no praises found
         if ($praises->isEmpty()) {
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'message' => 'No praises found',
-            ], 400);
+            ],);
         }
 
         // Calculate total hours for each praise
@@ -127,15 +136,15 @@ class PraiseController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Praise Reply Sent successfully',
-            'data' => $praises->items(),
-            'pagination' => [
-                'total' => $praises->total(),
-                'per_page' => $praises->perPage(),
-                'current_page' => $praises->currentPage(),
-                'last_page' => $praises->lastPage(),
-                'from' => $praises->firstItem(),
-                'to' => $praises->lastItem(),
-            ],
+            'data' => $praises,
+            // 'pagination' => [
+            //     'total' => $praises->total(),
+            //     'per_page' => $praises->perPage(),
+            //     'current_page' => $praises->currentPage(),
+            //     'last_page' => $praises->lastPage(),
+            //     'from' => $praises->firstItem(),
+            //     'to' => $praises->lastItem(),
+            // ],
         ]);
     }
     //ok
@@ -153,7 +162,7 @@ class PraiseController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Praise not found',
-                ], 400);
+                ],);
             }
 
             // Calculate the total hours from praise time to now
@@ -193,10 +202,10 @@ class PraiseController extends Controller
                 $message = "Praise "  . $response .   " successfully";
                 return response()->json(['success' => true, 'message' => $message,]);
             } else {
-                return response()->json(['success' => false, 'message' => 'Please enter valid status',], 400);
+                return response()->json(['success' => false, 'message' => 'Please enter valid status',]);
             }
         } else {
-            return response()->json(['success' => false, 'message' => 'Please enter valid praise id',], 400);
+            return response()->json(['success' => false, 'message' => 'Please enter valid praise id',]);
         }
     }
 
@@ -234,7 +243,7 @@ class PraiseController extends Controller
     
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();
-            return response()->json(['success' => false, 'message' => $errorMessage], 400);
+            return response()->json(['success' => false, 'message' => $errorMessage],);
         }
     
         $countryId  = $request->input('country_id');
@@ -249,7 +258,7 @@ class PraiseController extends Controller
         })->with(['praises' => function ($q) use ($categoryId) {
             $q->where('category_id', $categoryId);
             $q->where('status', 1); // Assuming status is in the praises table
-            $q->with('category');
+            // $q->with('category');
         }, 'country', 'state', 'city']);
     
         // Apply filters based on country, state, and city
@@ -267,19 +276,42 @@ class PraiseController extends Controller
         $users = $query->get();
     
         // Prepare the response data
+        // $response = $users->map(function ($user) {
+        //     // Calculate count of praises per category
+        //     $receivedPraises = $user->praises->groupBy('category_id')->map->count();
+        //     return [
+        //         'User_Profile_Image' => $user->profile_image?? 'https://praisy.beckapps.co/upload/images/PIc.png' ,
+        //         'Username' => ($user->first_name.' '.$user->last_name),
+        //         'Received_Praises' => $receivedPraises->all(), // Convert to array if needed
+        //         'Country' => $user->country ? $user->country->name : null,
+        //         'State' => $user->state ? $user->state->name : null,
+        //         'City' => $user->city ? $user->city->name : null,
+        //     ];
+        // });
         $response = $users->map(function ($user) {
             // Calculate count of praises per category
-            $receivedPraises = $user->praises->groupBy('category_id')->map->count();
+            $receivedPraises = $user->praises->groupBy('category_id')->mapWithKeys(function ($praises, $categoryId) {
+                $categoryName = $praises->first()->category->name; // Get the category name
+                return [$categoryName => $praises->count()]; // Use category name instead of ID
+            });
     
             return [
-                'User_Profile_Image' => $user->profile_image,
-                'Username' => $user->username,
+                'User_Profile_Image' => $user->profile_image ?? 'https://praisy.beckapps.co/upload/images/PIc.png',
+                'Username' => ($user->first_name . ' ' . $user->last_name),
                 'Received_Praises' => $receivedPraises->all(), // Convert to array if needed
                 'Country' => $user->country ? $user->country->name : null,
                 'State' => $user->state ? $user->state->name : null,
                 'City' => $user->city ? $user->city->name : null,
             ];
         });
+    
+        if ($response->isEmpty()) {
+            return response()->json(['success' => true, 'message' => 'No record found', 'data' => $response]);
+        }
+        // if ($response == '[]'){
+
+        //     return response()->json(['success' => true, 'message' => 'No record found', 'data' => $response]);
+        // } 
     
         return response()->json(['success' => true, 'message' => 'Data Fetched successfully', 'data' => $response]);
     }

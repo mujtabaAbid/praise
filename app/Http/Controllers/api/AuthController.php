@@ -262,18 +262,18 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success'=>false,'message'=> $validator->errors()->first()], 422);
+            return response()->json(['success'=>false,'message'=> $validator->errors()->first()], );
         }
 
         $user = User::where('email', $request->email)->first();
         if (!$user) {
-            return response()->json(['success'=>false,'message' => 'User not found.'], 404);
+            return response()->json(['success'=>false,'message' => 'User not found.'], );
         }
 
         $user->password = Hash::make($request->new_password);
         $user->save();
 
-        return response()->json(['success'=>true,'message' => 'Password reset successfully.'], 200);
+        return response()->json(['success'=>true,'message' => 'Password reset successfully.'], );
     }
 
     //ok
@@ -348,7 +348,7 @@ class AuthController extends Controller
     public function cities(Request $request){
         
         $validator = Validator::make($request->all(),
-        ['state_id' => 'required|exists:states,id'],['state_id' => 'State doesnot exist']);
+        ['state_id' => 'required|exists:states,id'],['state_id' => 'State does not exist']);
         
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();

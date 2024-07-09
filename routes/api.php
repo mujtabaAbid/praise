@@ -28,6 +28,7 @@ Route::get('countries', [AuthController::class, 'countries']);
 Route::post('state', [AuthController::class, 'state']);
 Route::post('cities', [AuthController::class, 'cities']);
 
+Route::post('/filters', [PraiseController::class,'praisesFilter']);//13
 
 // Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
 // Route::post('match-otp-forgot', [AuthController::class, 'matchOtpForgot']);
@@ -41,6 +42,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/get-sent-praises', [PraiseController::class,'getSentPraises']);//7,12
     Route::post('/get-praises-by-id', [PraiseController::class,'getPraiseById']);//10
     Route::post('/update-status', [PraiseController::class,'updateStatus']);//9
-    Route::post('/filters', [PraiseController::class,'praisesFilter']);//13
     
 });
