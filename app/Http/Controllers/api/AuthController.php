@@ -26,8 +26,8 @@ class AuthController extends Controller
             'email'         => 'required|string|email|max:255|unique:users',
             'password'      => 'required|string|min:8|confirmed',
             'country_id'    => 'required|exists:countries,id',
-            'state_id'      => 'exists:countries,id',
-            'city_id'       => 'exists:countries,id',
+            'state_id'      => 'exists:states,id',
+            'city_id'       => 'exists:cities,id',
             'image'         => 'nullable|image|mimes:jpeg,png,webp,jpg,svg|max:2048',
         ]);
 
@@ -267,7 +267,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
         if (!$user) {
-            return response()->json(['success'=>false,'message' => 'User not found.'], );
+            return response()->json(['success'=>true,'message' => 'User not found.'], );
         }
 
         $user->password = Hash::make($request->new_password);
@@ -286,7 +286,7 @@ class AuthController extends Controller
         
         if ($validator->fails()) {
             $errorMessage = $validator->errors()->first();
-            return response()->json(['success' => false, 'message' => $errorMessage],);
+            return response()->json(['success' => false, 'message' => $errorMessage, ],);
         }
             $otp = rand(1000, 9999);
             
@@ -297,7 +297,7 @@ class AuthController extends Controller
             
             // Send OTP to email
             Mail::to($request->email)->send(new OtpMail($otp));
-            return response()->json(['success'=>true, 'message' => 'Otp Sent successfully.'], );
+            return response()->json(['success'=>true, 'message' => 'Otp Sent successfully.','data'=> $otp], );
             
     }
     //ok

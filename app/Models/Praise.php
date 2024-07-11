@@ -12,7 +12,11 @@ class Praise extends Model
 
     public function praiseCategory()
     {
-        return $this->hasOne(PraiseCategory::class, 'id');
+        return $this->belongsTo(PraiseCategory::class,'category_id', 'id');
+    }
+    public function category()
+    {
+        return $this->belongsTo(PraiseCategory::class);
     }
     public function Sender()
     {

@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
+
 class PraiseController extends Controller
 {
 
@@ -46,7 +47,7 @@ class PraiseController extends Controller
             'details' => $request->details,
             'category_id' => $request->category_id,
             'time' => Carbon::now(),
-            'status' => 0,
+            // 'status' => 'pending',
         ]);
         return response()->json(['success' => true, 'message' => 'Praise created successfully', 'data' => $praise]);
     }
@@ -87,15 +88,16 @@ class PraiseController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Received Praises retrieved successfully',
-            'data' => $praises->items(),
-            'pagination' => [
-                'total' => $praises->total(),
-                'per_page' => $praises->perPage(),
-                'current_page' => $praises->currentPage(),
-                'last_page' => $praises->lastPage(),
-                'from' => $praises->firstItem(),
-                'to' => $praises->lastItem(),
-            ],
+            'data' => $praises,
+            // 'data' => $praises->items(),
+            // 'pagination' => [
+            //     'total' => $praises->total(),
+            //     'per_page' => $praises->perPage(),
+            //     'current_page' => $praises->currentPage(),
+            //     'last_page' => $praises->lastPage(),
+            //     'from' => $praises->firstItem(),
+            //     'to' => $praises->lastItem(),
+            // ],
         ]);
     }
 
@@ -160,7 +162,7 @@ class PraiseController extends Controller
 
             if (!$praise) {
                 return response()->json([
-                    'success' => false,
+                    'success' => true,
                     'message' => 'Praise not found',
                 ],);
             }
@@ -314,5 +316,136 @@ class PraiseController extends Controller
         // } 
     
         return response()->json(['success' => true, 'message' => 'Data Fetched successfully', 'data' => $response]);
+    }
+
+    public function allUsers(){
+
+        $allUsers = User::withCount('Praises')->get();
+        return response()->json(['success'=>true, 'message' => 'All Users fetched Successfully', 'data'=> $allUsers]);
+    }
+
+    public function allUsersWithPagination(Request $request){
+
+        $perPage = $request->input('per_page', 10);
+
+        $allUsers = User::withCount('Praises')->paginate($perPage, ['*'], 'page', $request->current_page);
+        return response()->json(['success'=>true, 'message' => 'All Users fetched Successfully', 'data'=> $allUsers]);
+    }
+
+    public function praisyCategory(){
+
+        $allUsers = PraiseCategory::all();
+
+        return response()->json(['success'=>true, 'message' => 'All Praise Category fetched Successfully', 'data'=> $allUsers]);
+        
+        
+    }
+    
+
+   
+    public function userDetails(Request $request) {
+        $userId = $request->id;
+        $userDetails = User::where('id', $userId)
+            ->with(['praises' => function ($query) {
+                $query->where('status', 1)->with('category');
+            }])
+            ->withCount(['praises as total_praises'])
+            ->first();
+    
+        // Check if user details were found
+        if (!$userDetails) {
+            return response()->json(['success' => false, 'message' => 'User not found', 'data' => null], 404);
+        }
+    
+        $acceptedPraise = Praise::select('category_id', \DB::raw('count(*) as count'))
+            ->where('receiver_id', $userId)
+            ->where('status', 1)
+            ->groupBy('category_id')
+            ->get();
+    
+        // Map category IDs to their names
+        $categoryNames = PraiseCategory::pluck('name', 'id');
+    
+        // Prepare the formatted praise count with category names
+        $praise = $acceptedPraise->mapWithKeys(function ($item) use ($categoryNames) {
+            return [$categoryNames[$item->category_id] => $item->count];
+        });
+    
+        // Convert formatted praise categories count to array
+        $praiseArray = $praise->toArray();
+    
+        // Attach formatted praise categories count to user details
+        $userDetails->acceptedPraise = $praiseArray;
+    
+        return response()->json(['success' => true, 'message' => 'User Details fetched Successfully', 'data' => $userDetails]);
+    }
+
+
+    public function userProfile() {
+        $userId = Auth()->id();
+        $userDetails = User::where('id', $userId)
+            ->with(['praises' => function ($query) {
+                $query->where('status', 1)->with('category');
+            }])
+            ->withCount(['praises as total_praises'])
+            ->first();
+    
+        // Check if user details were found
+        if (!$userDetails) {
+            return response()->json(['success' => false, 'message' => 'User not found', 'data' => null], 404);
+        }
+    
+        $acceptedPraise = Praise::select('category_id', \DB::raw('count(*) as count'))
+            ->where('receiver_id', $userId)
+            ->where('status', 1)
+            ->groupBy('category_id')
+            ->get();
+    
+        // Map category IDs to their names
+        $categoryNames = PraiseCategory::pluck('name', 'id');
+    
+        // Prepare the formatted praise count with category names
+        $praise = $acceptedPraise->mapWithKeys(function ($item) use ($categoryNames) {
+            return [$categoryNames[$item->category_id] => $item->count];
+        });
+    
+        // Convert formatted praise categories count to array
+        $praiseArray = $praise->toArray();
+    
+        // Attach formatted praise categories count to user details
+        $userDetails->acceptedPraise = $praiseArray;
+    
+        return response()->json(['success' => true, 'message' => 'User Profile fetched Successfully', 'data' => $userDetails]);
+    }
+
+    public function search(Request $request)
+    {
+        $query = $request->input('query');
+
+        // Search users by username or other fields
+        $users = User::where('first_name', 'LIKE', "%{$query}%")
+                     ->orWhere('last_name', 'LIKE', "%{$query}%")
+                     ->get();
+
+
+        $praiseCategoryName = PraiseCategory::where('name', 'LIKE', "%{$query}%")->first()->name;
+
+        $praiseCategoryIds = PraiseCategory::where('name', 'LIKE', "%{$query}%")
+                                        ->pluck('id')
+                                        ->toArray();
+
+        // Step 3: Retrieve praises where category_id matches the retrieved PraiseCategory IDs
+        $praises = Praise::whereIn('category_id', $praiseCategoryIds)->pluck('receiver_id')->unique()->toArray();
+        // Step 4: Retrieve users with these receiver_ids
+        $praiseUsers = User::whereIn('id', $praises)->get();
+
+
+        return response()->json([
+            'success'           => true,
+            'message'           => 'Search Result',
+            'users'             => $users,
+            'praiseName'        => $praiseCategoryName,
+            'praisedUser'       => $praiseUsers
+        ]);
     }
 }
