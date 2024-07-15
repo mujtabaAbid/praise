@@ -12,8 +12,9 @@ use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -276,6 +277,89 @@ class AuthController extends Controller
         return response()->json(['success'=>true,'message' => 'Password reset successfully.'], );
     }
 
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'old_password'      => 'required|min:8',
+            'new_password'      => 'required|min:8',
+            'confirm_password'  => 'required|same:new_password'
+        ]);
+    
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()]);
+        }
+    
+        $user = Auth::user();
+    
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'User not authenticated.']);
+        }
+    
+        if (!Hash::check($request->old_password, $user->password)) {
+            return response()->json(['success' => false, 'message' => 'Old password is incorrect.']);
+        }
+    
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+    
+        return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048',
+            'country_id' => 'nullable|integer|exists:countries,id',
+            'state_id' => 'nullable|integer|exists:states,id',
+            'city_id' => 'nullable|integer|exists:cities,id',
+        ]);
+
+        if ($request->hasFile('image')) {
+            // Delete old image if exists
+            if ($user->image) {
+                if ($user->image != 'upload/images/PIc.png') {
+                    Storage::delete($user->image);
+                }
+                // Store new image
+                $imageName = time().'.'.$request->image->getClientOriginalExtension();
+                $imagePath = $request->image->move(public_path('upload/images'), $imageName);
+                $imagePath = 'upload/images/' . $imageName; // Store the relative path
+                $user->image = $imagePath;
+            }
+
+        }
+
+        $user->first_name = $request->input('first_name', $user->first_name) ?? $user->first_name ;
+        $user->last_name = $request->input('last_name', $user->last_name)?? $user->last_name;
+        $user->country_id = $request->input('country_id', $user->country_id) ?? $user->country_id;
+        $user->state_id = $request->input('state_id', $user->state_id) ?? $user->state_id;
+        $user->city_id = $request->input('city_id', $user->city_id) ?? $user->city_id;
+
+        $user->save();
+
+        $user->load('Country','State','city');
+
+        return response()->json(['success' => true,'message' => 'Profile updated successfully.',
+         'data' => [
+            'id'        => $user->id,
+            'first_name'=> $user->first_name,
+            'last_name' => $user->last_name,
+            'image'     => $user->image,
+            'email'     => $user->email,
+            'email'     => $user->email,
+            'country'   => $user->country ? $user->country->name : null,
+            'country_id'=> $user->country_id,
+            'state'     => $user->state ? $user->state->name : null,
+            'state_id'  => $user->state_id,
+            'city'      => $user->city ? $user->city->name : null,
+            'city_id'   => $user->city_id
+        ]]);
+    }
+
     //ok
     public function getOtp(Request $request)
     {
@@ -358,6 +442,145 @@ class AuthController extends Controller
         $cities = City::where('state_id',$request->state_id)->get();
         return response()->json(['success'=>true, 'message' => 'state Data fetched Successfully', 'data'=> $cities]);
 
+    }
+
+    // public function filters(Request $request)
+    // {
+    //     // Validate the query parameter first
+    //     // dd($request->name);
+    //     $validator = Validator::make($request->all(), [
+    //         'name' => 'required|string|in:worldwide,country,city,state',
+    //         'id' => [
+    //             'required_if:name,country,city,state',
+    //             'integer',
+    //             // Add exists rules for specific tables
+    //             Rule::exists('countries', 'id')->where(function ($query) use ($request) {
+    //                 return $request->name === 'country';
+    //             }),
+    //             Rule::exists('states', 'id')->where(function ($query) use ($request) {
+    //                 return $request->name === 'state';
+    //             }),
+    //             Rule::exists('cities', 'id')->where(function ($query) use ($request) {
+    //                 return $request->name === 'city';
+    //             }),
+    //         ],
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         $errorMessage = $validator->errors()->first();
+    //         return response()->json(['success' => false, 'message' => $errorMessage]);
+    //     }
+
+    //     switch ($request->name) {
+    //         case 'worldwide':
+    //             $users = User::paginate(10);
+    //             return response()->json(['success' => true, 'message' => 'Users fetched successfully', 'data' => $users]);
+
+    //         case 'country':
+    //             $users = User::where('country_id', $request->id)->paginate(10);
+    //             if ($users->isEmpty()) {
+    //                 return response()->json(['success' => true, 'message' => 'No data found',]);
+                    
+    //             }else{
+    //                 return response()->json(['success' => true, 'message' => 'Users fetched according to country successfully', 'data' => $users]);
+    //             }
+
+    //         case 'state':
+    //             $users = User::where('state_id', $request->id)->paginate(10);
+    //             if ($users->isEmpty()) {
+    //                 return response()->json(['success' => true, 'message' => 'No data found',]);
+    //             }else{
+    //                 return response()->json(['success' => true, 'message' => 'Users fetched according to state successfully', 'data' => $users]);
+    //             }
+
+    //         case 'city':
+    //             $users = User::where('city_id', $request->id)->paginate(10);
+    //             if ($users->isEmpty()) {
+    //                 return response()->json(['success' => true, 'message' => 'No data found',]);
+                    
+    //             }else{
+    //                 return response()->json(['success' => true, 'message' => 'Users fetched according to city successfully', 'data' => $users]);
+    //             }
+
+    //         default:
+    //             return response()->json(['success' => false, 'message' => 'Invalid name parameter']);
+    //     }
+    // }
+
+    public function filters(Request $request)
+    {
+        // Validate the query parameters
+
+
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|in:worldwide,country,city,state',
+            'id' => [
+                'required_if:name,country,city,state',
+                'integer',
+                Rule::exists('countries', 'id')->where(function ($query) use ($request) {
+                    return $request->name === 'country';
+                }),
+                Rule::exists('states', 'id')->where(function ($query) use ($request) {
+                    return $request->name === 'state';
+                }),
+                Rule::exists('cities', 'id')->where(function ($query) use ($request) {
+                    return $request->name === 'city';
+                }),
+            ],
+            'category_id' => 'nullable|integer|exists:praises,id', // New validation rule for category_id
+        ]);
+
+        if ($validator->fails()) {
+            $errorMessage = $validator->errors()->first();
+            return response()->json(['success' => false, 'message' => $errorMessage]);
+        }
+
+        // Determine the query based on the 'name' parameter
+        switch ($request->name) {
+            case 'worldwide':
+                $usersQuery = User::query();
+                break;
+
+            case 'country':
+                $usersQuery = User::where('country_id', $request->id);
+                break;
+
+            case 'state':
+                $usersQuery = User::where('state_id', $request->id);
+                break;
+
+            case 'city':
+                $usersQuery = User::where('city_id', $request->id);
+                break;
+
+            default:
+                return response()->json(['success' => false, 'message' => 'Invalid name parameter']);
+        }
+
+        // Apply optional category_id filter if provided
+        if ($request->has('category_id')) {
+            $usersQuery->whereHas('praises', function ($query) use ($request) {
+                $query->where('category_id', $request->category_id);
+            });
+        }
+
+        // Paginate and return the results
+        $users = $usersQuery->paginate(10);
+
+        if ($users->isEmpty()) {
+            return response()->json(['success' => true, 'message' => 'No data found']);
+        }
+
+        $message = match ($request->name) {
+            'worldwide' => 'Users fetched successfully',
+            'country' => 'Users fetched according to country successfully',
+            'state' => 'Users fetched according to state successfully',
+            'city' => 'Users fetched according to city successfully',
+            default => 'Unknown message'
+        };
+
+        return response()->json(['success' => true, 'message' => $message, 'data' => $users]);
     }
 }
 
