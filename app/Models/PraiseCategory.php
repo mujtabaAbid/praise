@@ -9,4 +9,9 @@ class PraiseCategory extends Model
 {
     use HasFactory;
     protected $guarded=[];
+
+    public function praises()
+    {
+        return $this->hasMany(Praise::class);
+    }
 }
